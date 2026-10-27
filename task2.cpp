@@ -7,10 +7,16 @@
 //
 // Complexity:
 // - Each move checks at most 8 squares x 8 moves, so it's O(1) per move.
-// - Best case: never gets stuck, N*N moves -> O(N^2) (8x8 took 64 calls).
-// - Worst case: still has to backtrack -> O(8^(N*N)), e.g. N = 2, 3, 4
-//   where no tour exists.
+// - Best case: never gets stuck, N*N moves -> O(N^2). This is what happens
+//   for most start squares (8x8 from (0,0) takes exactly 64 calls).
+// - Worst case: the rule is a heuristic, not a guarantee. When it gets
+//   stuck we backtrack, and in theory that's still O(8^(N*N)). For example
+//   7x7 from (2,4) takes about 1.4 million calls instead of 49.
+//   So O(N^2) is the best/usual case, not a promise for every input.
 // - Space: O(N^2) for the board and the recursion.
+//
+// main() first runs both versions on 5x5 and 6x6 to show the difference
+// (6x6: about 248,000 calls without the rule, 36 with it).
 #include <iostream>
 #include <iomanip>
 using namespace std;
@@ -18,19 +24,21 @@ using namespace std;
 const int MAX = 30;
 
 // the 8 L-shaped knight moves
-int moveX[8] = {2, 1, -1, -2, -2, -1, 1, 2};
-int moveY[8] = {1, 2, 2, 1, -1, -2, -2, -1};
+const int moveX[8] = {2, 1, -1, -2, -2, -1, 1, 2};
+const int moveY[8] = {1, 2, 2, 1, -1, -2, -2, -1};
 
 class KnightTour {
 private:
     int board[MAX][MAX];    // 0 = not visited, else the move number
     int n;
-    int steps;              // number of recursive calls
+    long long steps;        // number of recursive calls
+    bool useRule;           // false = plain backtracking, for comparing
 
 public:
     KnightTour(int size) {
         n = size;
         steps = 0;
+        useRule = true;
         for (int i = 0; i < n; i++)
             for (int j = 0; j < n; j++)
                 board[i][j] = 0;
@@ -81,8 +89,9 @@ public:
             }
         }
 
-        // fewest onward moves first (insertion sort, max 8 items)
-        for (int i = 1; i < total; i++) {
+        // fewest onward moves first (insertion sort, max 8 items).
+        // skipped in plain mode, then moves are tried in the fixed order
+        for (int i = 1; i < total && useRule; i++) {
             int tx = nextX[i], ty = nextY[i], td = degree[i], tdist = dist[i];
             int j = i - 1;
             while (j >= 0 && (degree[j] > td || (degree[j] == td && dist[j] < tdist))) {
@@ -108,7 +117,9 @@ public:
         return false;
     }
 
-    bool findTour(int x, int y) {
+    bool findTour(int x, int y, bool rule) {
+        useRule = rule;
+
         // a knight switches colour every move, so on an odd board the tour
         // has to start where (x + y) is even. saves a long useless search
         if (n % 2 == 1 && (x + y) % 2 == 1)
@@ -126,34 +137,49 @@ public:
         }
     }
 
-    int getSteps() {
+    long long getSteps() {
         return steps;
     }
 };
 
+// runs plain backtracking and Warnsdorff on the same board and prints both
+void compare(int n) {
+    KnightTour plain(n), fast(n);
+    plain.findTour(0, 0, false);
+    fast.findTour(0, 0, true);
+    cout << n << "x" << n << "\t" << plain.getSteps() << "\t\t" << fast.getSteps() << endl;
+}
+
 int main() {
     int n, x, y;
 
-    cout << "Enter board size N (max " << MAX << "): ";
-    cin >> n;
-    if (n < 1 || n > MAX) {
+    // plain backtracking gets too slow after 6x6, so only compare these two
+    cout << "Recursive calls starting from (0, 0):" << endl;
+    cout << "Board\tPlain\t\tWarnsdorff" << endl;
+    compare(5);
+    compare(6);
+    cout << endl;
+
+    cout << "Enter board size N (1 to " << MAX << "): ";
+    if (!(cin >> n) || n < 1 || n > MAX) {
         cout << "Invalid board size." << endl;
         return 0;
     }
 
     cout << "Enter starting position (row col): ";
-    cin >> x >> y;
-    if (x < 0 || y < 0 || x >= n || y >= n) {
-        cout << "Position is outside the board." << endl;
+    if (!(cin >> x >> y) || x < 0 || y < 0 || x >= n || y >= n) {
+        cout << "Invalid position, it has to be inside the board." << endl;
         return 0;
     }
 
     KnightTour k(n);
-    if (k.findTour(x, y)) {
+    if (k.findTour(x, y, true)) {
         cout << endl << "Knight's tour found:" << endl;
         k.display();
         cout << endl << "Squares on board: " << n * n << endl;
         cout << "Recursive calls:  " << k.getSteps() << endl;
+        if (k.getSteps() > n * n)
+            cout << "(the rule got stuck here, so backtracking was needed)" << endl;
     }
     else {
         cout << "No knight's tour exists from (" << x << ", " << y << ")." << endl;

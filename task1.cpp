@@ -17,16 +17,32 @@ public:
         cols = 0;
     }
 
-    void input() {
-        cout << "Enter number of rows: ";
-        cin >> rows;
-        cout << "Enter number of columns: ";
-        cin >> cols;
+    // reads the array from the user, returns false if the input is bad
+    bool input() {
+        int r, c;
+        cout << "Enter number of rows (1 to " << MAX << "): ";
+        if (!(cin >> r) || r < 1 || r > MAX) {
+            cout << "Invalid number of rows." << endl;
+            return false;
+        }
+        cout << "Enter number of columns (1 to " << MAX << "): ";
+        if (!(cin >> c) || c < 1 || c > MAX) {
+            cout << "Invalid number of columns." << endl;
+            return false;
+        }
 
         cout << "Enter the elements row by row:" << endl;
-        for (int i = 0; i < rows; i++)
-            for (int j = 0; j < cols; j++)
-                cin >> arr[i][j];
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                if (!(cin >> arr[i][j])) {
+                    cout << "Invalid element, numbers only." << endl;
+                    return false;
+                }
+            }
+        }
+        rows = r;
+        cols = c;
+        return true;
     }
 
     void setArray(int a[][MAX], int r, int c) {
@@ -58,7 +74,11 @@ public:
     // Binary search on the columns. The biggest value in the middle column is
     // already >= the ones above and below it, so we only check left and right.
     // If one side is bigger, a peak must be on that side, so we go there.
-    // Time: log n steps, each scanning n rows -> O(n log n). Space: O(1)
+    // Why: that neighbour is bigger than everything in the middle column.
+    // So the max of that half is bigger too, and it can never be next to
+    // something bigger in our column. That max is always a peak.
+    // Time: log c steps, each scanning r rows -> O(r log c) for an r x c
+    // array, which is O(n log n) for an n x n one. Space: O(1)
     void findPeak() {
         int low = 0, high = cols - 1;
 
@@ -104,7 +124,8 @@ int main() {
     cout << endl;
 
     // then the user's own array
-    p.input();
+    if (!p.input())
+        return 0;
     cout << endl << "Your array:" << endl;
     p.display();
     p.findPeak();
