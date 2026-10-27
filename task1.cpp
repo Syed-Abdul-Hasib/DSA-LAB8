@@ -1,4 +1,6 @@
 // Task 1: Peak Element in a 2D Array
+// A peak is an element that is not smaller than any of its 4 neighbours
+// (up, down, left, right). Edge elements just have fewer neighbours.
 #include <iostream>
 using namespace std;
 
@@ -44,7 +46,7 @@ public:
         }
     }
 
-    // Returns the row of the largest element in column c. Time: O(n)
+    // goes down column c and returns the row where the biggest value is
     int maxInColumn(int c) {
         int maxRow = 0;
         for (int i = 1; i < rows; i++) {
@@ -54,11 +56,16 @@ public:
         return maxRow;
     }
 
-    // Binary search on columns.
-    // The max of the middle column is already >= its up and down neighbours,
-    // so we only compare it with left and right. If a side is bigger, a peak
-    // must exist in that half, so we move there.
-    // log n columns are checked, each check scans n rows -> O(n log n)
+    // Idea: binary search on the columns instead of checking every element.
+    // Take the middle column and find its biggest value. Since it's the
+    // biggest in its column, it's already >= the elements above and below it,
+    // so only left and right are left to check.
+    // If one of them is bigger, we go to that side. A peak has to be there
+    // because the values keep going up that way and can't do it forever.
+    //
+    // Time: the search halves the columns each time (log n steps) and each
+    // step scans one full column (n rows), so it's O(n log n) overall.
+    // Space: O(1), nothing extra is used apart from a few variables.
     void findPeak() {
         int low = 0, high = cols - 1;
 
@@ -72,6 +79,7 @@ public:
             if (mid < cols - 1 && arr[r][mid + 1] > arr[r][mid])
                 rightBigger = true;
 
+            // nothing around it is bigger, so this is a peak
             if (!leftBigger && !rightBigger) {
                 cout << "Peak element: " << arr[r][mid]
                      << " at position (" << r << ", " << mid << ")" << endl;
@@ -88,6 +96,7 @@ public:
 int main() {
     PeakFinder p;
 
+    // first run it on a fixed array so we know what output to expect
     int sample[MAX][MAX] = {
         {10,  8, 10, 10},
         {14, 13, 12, 11},
@@ -101,6 +110,7 @@ int main() {
     p.findPeak();
     cout << endl;
 
+    // then let the user try their own array
     p.input();
     cout << endl << "Your array:" << endl;
     p.display();
