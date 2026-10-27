@@ -1,6 +1,5 @@
 // Task 1: Peak Element in a 2D Array
-// A peak is an element that is not smaller than any of its 4 neighbours
-// (up, down, left, right). Edge elements just have fewer neighbours.
+// A peak is an element that is >= all of its neighbours (up, down, left, right).
 #include <iostream>
 using namespace std;
 
@@ -56,16 +55,10 @@ public:
         return maxRow;
     }
 
-    // Idea: binary search on the columns instead of checking every element.
-    // Take the middle column and find its biggest value. Since it's the
-    // biggest in its column, it's already >= the elements above and below it,
-    // so only left and right are left to check.
-    // If one of them is bigger, we go to that side. A peak has to be there
-    // because the values keep going up that way and can't do it forever.
-    //
-    // Time: the search halves the columns each time (log n steps) and each
-    // step scans one full column (n rows), so it's O(n log n) overall.
-    // Space: O(1), nothing extra is used apart from a few variables.
+    // Binary search on the columns. The biggest value in the middle column is
+    // already >= the ones above and below it, so we only check left and right.
+    // If one side is bigger, a peak must be on that side, so we go there.
+    // Time: log n steps, each scanning n rows -> O(n log n). Space: O(1)
     void findPeak() {
         int low = 0, high = cols - 1;
 
@@ -96,7 +89,7 @@ public:
 int main() {
     PeakFinder p;
 
-    // first run it on a fixed array so we know what output to expect
+    // fixed array first, so we know the expected output
     int sample[MAX][MAX] = {
         {10,  8, 10, 10},
         {14, 13, 12, 11},
@@ -110,7 +103,7 @@ int main() {
     p.findPeak();
     cout << endl;
 
-    // then let the user try their own array
+    // then the user's own array
     p.input();
     cout << endl << "Your array:" << endl;
     p.display();

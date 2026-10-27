@@ -1,42 +1,31 @@
 // Task 2: Knight's Tour (Backtracking + Warnsdorff's rule)
 //
-// Plain backtracking would be: try the 8 moves in the same order every
-// time and undo when stuck. It works, but it's really slow because in the
-// worst case it ends up trying almost every path, O(8^(N*N)). Already on
-// a 6x6 board it needs hundreds of thousands of calls.
-//
-// To speed it up I used Warnsdorff's rule. Out of the moves available,
-// go to the square that has the fewest moves left from it. The idea is
-// to visit the hard to reach squares (corners, edges) early, before they
-// get cut off. If two squares are tied, I pick the one farther from the
-// centre. I kept the backtracking too, so if the rule ever gets stuck
-// the program can still go back and try something else.
+// Plain backtracking tries the 8 moves in a fixed order and is really slow,
+// O(8^(N*N)). To speed it up I used Warnsdorff's rule: always go to the
+// square with the fewest moves left from it, so corners and edges get
+// visited before they're cut off. Backtracking is kept in case it gets stuck.
 //
 // Complexity:
-// - For every move we look at max 8 squares and count max 8 moves for each,
-//   which is a fixed amount of work, so each move is O(1).
-// - Best case: the rule never gets stuck, so we just make N*N moves and
-//   the whole thing is O(N^2). This is what happens almost every time
-//   (for 8x8 it took exactly 64 calls).
-// - Worst case: it still has to backtrack, so in theory it's the same as
-//   plain backtracking, O(8^(N*N)). This happens for N = 2, 3, 4, where no
-//   tour exists and it has to check every option before giving up.
-// - Space: O(N^2) for the board, and the recursion can go N*N calls deep.
+// - Each move checks at most 8 squares x 8 moves, so it's O(1) per move.
+// - Best case: never gets stuck, N*N moves -> O(N^2) (8x8 took 64 calls).
+// - Worst case: still has to backtrack -> O(8^(N*N)), e.g. N = 2, 3, 4
+//   where no tour exists.
+// - Space: O(N^2) for the board and the recursion.
 #include <iostream>
 #include <iomanip>
 using namespace std;
 
 const int MAX = 30;
 
-// all 8 L-shaped moves, moveX[i] and moveY[i] go together
+// the 8 L-shaped knight moves
 int moveX[8] = {2, 1, -1, -2, -2, -1, 1, 2};
 int moveY[8] = {1, 2, 2, 1, -1, -2, -2, -1};
 
 class KnightTour {
 private:
-    int board[MAX][MAX];    // 0 means not visited, otherwise which move we got here on
+    int board[MAX][MAX];    // 0 = not visited, else the move number
     int n;
-    int steps;              // counts recursive calls, to see how much work was done
+    int steps;              // number of recursive calls
 
 public:
     KnightTour(int size) {
@@ -47,12 +36,12 @@ public:
                 board[i][j] = 0;
     }
 
-    // square is inside the board and not visited yet
+    // inside the board and not visited yet
     bool isSafe(int x, int y) {
         return (x >= 0 && y >= 0 && x < n && y < n && board[x][y] == 0);
     }
 
-    // how many free squares the knight could jump to from (x, y)
+    // how many free squares we can jump to from (x, y)
     int countMoves(int x, int y) {
         int count = 0;
         for (int k = 0; k < 8; k++) {
@@ -62,8 +51,7 @@ public:
         return count;
     }
 
-    // (squared) distance from the middle of the board, only used for ties.
-    // I doubled x and y so it works with ints even when the centre is x.5
+    // distance from the centre, only used to break ties
     int distance(int x, int y) {
         int dx = 2 * x - (n - 1);
         int dy = 2 * y - (n - 1);
@@ -72,18 +60,18 @@ public:
 
     bool solve(int x, int y, int move) {
         steps++;
-        // every square has a number now, so the tour is done
+        // all squares visited
         if (move == n * n)
             return true;
 
-        // first find all the squares we can actually go to from here
+        // find all squares we can go to from here
         int nextX[8], nextY[8], degree[8], dist[8];
         int total = 0;
         for (int k = 0; k < 8; k++) {
             int nx = x + moveX[k];
             int ny = y + moveY[k];
             if (isSafe(nx, ny)) {
-                board[nx][ny] = -1;          // block it for a sec so it doesn't count itself
+                board[nx][ny] = -1;          // so it doesn't count itself
                 nextX[total] = nx;
                 nextY[total] = ny;
                 degree[total] = countMoves(nx, ny);
@@ -93,8 +81,7 @@ public:
             }
         }
 
-        // sort them so the square with the fewest onward moves comes first.
-        // there are at most 8, so a simple insertion sort is enough
+        // fewest onward moves first (insertion sort, max 8 items)
         for (int i = 1; i < total; i++) {
             int tx = nextX[i], ty = nextY[i], td = degree[i], tdist = dist[i];
             int j = i - 1;
@@ -111,8 +98,7 @@ public:
             dist[j + 1] = tdist;
         }
 
-        // try them in that order. if one leads to a dead end, clear it
-        // and try the next one (this is the backtracking part)
+        // try each one, undo it if it's a dead end (backtracking)
         for (int i = 0; i < total; i++) {
             board[nextX[i]][nextY[i]] = move + 1;
             if (solve(nextX[i], nextY[i], move + 1))
@@ -123,10 +109,8 @@ public:
     }
 
     bool findTour(int x, int y) {
-        // a knight always lands on the other colour, so the tour keeps
-        // switching colours. on an odd board one colour has one extra square,
-        // and the tour has to start on that colour ((x + y) even). checking
-        // this here saves a really long search that can never succeed
+        // a knight switches colour every move, so on an odd board the tour
+        // has to start where (x + y) is even. saves a long useless search
         if (n % 2 == 1 && (x + y) % 2 == 1)
             return false;
 
