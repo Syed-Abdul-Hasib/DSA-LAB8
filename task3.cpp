@@ -1,151 +1,131 @@
-// Task 3: Tower of Hanoi (iterative)
+// Task 3: Tower of Hanoi (Iterative)
 //
-// Each peg is a stack of disk sizes. The iterative solution uses the fact
-// that the optimal sequence repeats a cycle of three peg pairs:
-//     move i % 3 == 1 : between source and destination
-//     move i % 3 == 2 : between source and auxiliary
-//     move i % 3 == 0 : between auxiliary and destination
-// For each pair there is only one legal direction (smaller disk on top of
-// the larger one / empty peg), so we just make that move.
-// If N is even, the auxiliary and destination pegs are swapped so the
-// tower ends up on the destination peg.
+// Each peg is a stack. Moves follow a fixed cycle of 3 peg pairs:
+//   move % 3 == 1 : source <-> destination
+//   move % 3 == 2 : source <-> auxiliary
+//   move % 3 == 0 : auxiliary <-> destination
+// Between two pegs only one move is legal (smaller disk on top), so we
+// make that move. If N is even, auxiliary and destination are swapped.
 //
-// Complexity analysis:
-//   - The minimum number of moves is T(N) = 2T(N-1) + 1 = 2^N - 1.
-//   - Every move is O(1) (two stack tops are compared, one push/pop).
-//   - Time:  O(2^N) - exponential, the same for best/worst case because
-//            the number of moves is fixed for a given N.
-//   - Space: O(N) - the three stacks together hold exactly N disks
-//            (no recursion stack is needed, unlike the recursive version).
-
+// Complexity:
+//   Total moves = 2^N - 1, each move is O(1) -> Time: O(2^N)
+//   The 3 stacks hold N disks in total -> Space: O(N)
 #include <iostream>
-#include <stack>
-#include <limits>
-#include <cstdlib>
 using namespace std;
 
-struct Peg {
+const int MAX = 30;
+
+class Stack {
+private:
+    int arr[MAX];
+    int top;
+
+public:
     char name;
-    stack<int> disks;
+
+    Stack() {
+        top = -1;
+        name = ' ';
+    }
+
+    bool isEmpty() {
+        return top == -1;
+    }
+
+    void push(int x) {
+        if (top == MAX - 1) {
+            cout << "Stack overflow" << endl;
+            return;
+        }
+        arr[++top] = x;
+    }
+
+    int pop() {
+        if (isEmpty())
+            return -1;
+        return arr[top--];
+    }
+
+    int peek() {
+        if (isEmpty())
+            return -1;
+        return arr[top];
+    }
 };
 
 class TowerOfHanoi {
+private:
+    Stack source, auxiliary, destination;
     int n;
-    Peg pegs[3];         // 0 = source, 1 = auxiliary, 2 = destination
-    long long moveCount;
-    bool printMoves;
+    int moveCount;
 
-    void moveDisk(Peg& from, Peg& to) {
-        int disk = from.disks.top();
-        from.disks.pop();
-        to.disks.push(disk);
-        moveCount++;
-        if (printMoves)
-            cout << "Move " << moveCount << ": disk " << disk
-                 << " from " << from.name << " to " << to.name << endl;
+    // makes the only legal move between pegs a and b
+    void moveBetween(Stack &a, Stack &b) {
+        if (a.isEmpty() || (!b.isEmpty() && b.peek() < a.peek())) {
+            int disk = b.pop();
+            a.push(disk);
+            printMove(disk, b.name, a.name);
+        }
+        else {
+            int disk = a.pop();
+            b.push(disk);
+            printMove(disk, a.name, b.name);
+        }
     }
 
-    // make the only legal move between two pegs
-    void legalMove(Peg& a, Peg& b) {
-        if (a.disks.empty())
-            moveDisk(b, a);
-        else if (b.disks.empty())
-            moveDisk(a, b);
-        else if (a.disks.top() < b.disks.top())
-            moveDisk(a, b);
-        else
-            moveDisk(b, a);
+    void printMove(int disk, char from, char to) {
+        moveCount++;
+        cout << "Move " << moveCount << ": Disk " << disk
+             << " from " << from << " to " << to << endl;
     }
 
 public:
-    TowerOfHanoi(int disks, char src, char aux, char dst, bool print)
-        : n(disks), moveCount(0), printMoves(print) {
-        pegs[0].name = src;
-        pegs[1].name = aux;
-        pegs[2].name = dst;
-        for (int d = n; d >= 1; d--)    // largest at the bottom
-            pegs[0].disks.push(d);
+    TowerOfHanoi(int disks) {
+        n = disks;
+        moveCount = 0;
+        source.name = 'A';
+        auxiliary.name = 'B';
+        destination.name = 'C';
+
+        for (int i = n; i >= 1; i--)     // largest disk at the bottom
+            source.push(i);
     }
 
     void solve() {
-        Peg& source = pegs[0];
-        Peg* aux = &pegs[1];
-        Peg* dest = &pegs[2];
-        if (n % 2 == 0)
-            swap(aux, dest);
+        Stack *aux = &auxiliary;
+        Stack *dest = &destination;
+        if (n % 2 == 0) {
+            aux = &destination;
+            dest = &auxiliary;
+        }
 
-        long long total = (1LL << n) - 1;
-        for (long long i = 1; i <= total; i++) {
+        int totalMoves = (1 << n) - 1;
+        for (int i = 1; i <= totalMoves; i++) {
             if (i % 3 == 1)
-                legalMove(source, *dest);
+                moveBetween(source, *dest);
             else if (i % 3 == 2)
-                legalMove(source, *aux);
+                moveBetween(source, *aux);
             else
-                legalMove(*aux, *dest);
+                moveBetween(*aux, *dest);
         }
-    }
 
-    // destination holds 1..n in order and the other pegs are empty
-    bool isSolved() const {
-        if (!pegs[0].disks.empty() || !pegs[1].disks.empty())
-            return false;
-        stack<int> s = pegs[2].disks;
-        for (int d = 1; d <= n; d++) {
-            if (s.empty() || s.top() != d)
-                return false;
-            s.pop();
-        }
-        return s.empty();
+        cout << endl << "Total moves: " << moveCount << endl;
     }
-
-    long long getMoveCount() const { return moveCount; }
 };
 
-template <typename T>
-T readNumber(const string& prompt) {
-    T value;
-    while (true) {
-        cout << prompt;
-        if (cin >> value)
-            return value;
-        if (cin.eof())
-            exit(0);
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "   Please enter a valid number." << endl;
-    }
-}
-
 int main() {
-    cout << "===== Tower of Hanoi (Iterative) =====" << endl << endl;
+    int n;
+    cout << "Enter number of disks: ";
+    cin >> n;
 
-    // move counts grow as 2^N - 1
-    cout << "N\tmoves\t2^N - 1\tsolved" << endl;
-    for (int n = 1; n <= 20; n++) {
-        TowerOfHanoi t(n, 'A', 'B', 'C', false);
-        t.solve();
-        cout << n << "\t" << t.getMoveCount() << "\t" << ((1LL << n) - 1)
-             << "\t" << (t.isSolved() ? "yes" : "no") << endl;
-    }
-    cout << endl;
-
-    int n = readNumber<int>("Enter number of disks (1 to 25): ");
-    if (n < 1 || n > 25) {
-        cout << "Please choose between 1 and 25 disks (2^25 moves is already 33 million)." << endl;
+    if (n < 1 || n > 20) {
+        cout << "Please enter between 1 and 20 disks." << endl;
         return 0;
     }
 
-    bool print = true;
-    if (n > 10) {
-        cout << "That is " << ((1LL << n) - 1) << " moves. Print them all? (1 = yes, 0 = no): ";
-        print = readNumber<int>("") == 1;
-    }
+    cout << endl << "Moving " << n << " disks from A to C:" << endl;
+    TowerOfHanoi t(n);
+    t.solve();
 
-    cout << endl << "Moving " << n << " disk(s) from A to C using B:" << endl;
-    TowerOfHanoi game(n, 'A', 'B', 'C', print);
-    game.solve();
-    cout << endl << "Total moves: " << game.getMoveCount()
-         << " (expected " << ((1LL << n) - 1) << ")" << endl;
-    cout << "Tower on C: " << (game.isSolved() ? "yes" : "no") << endl;
     return 0;
 }
