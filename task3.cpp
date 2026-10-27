@@ -1,41 +1,35 @@
 // Task 3: Tower of Hanoi (Iterative)
 //
-// Each peg is a stack. The moves always repeat between the same peg pairs:
-//   move 1, 4, 7, ...  source <-> destination
-//   move 2, 5, 8, ...  source <-> auxiliary
-//   move 3, 6, 9, ...  auxiliary <-> destination
-// Only one direction is legal (smaller disk on top), so we move that way.
-// Why it works: in the optimal solution the smallest disk moves on every
-// odd move, always going round the pegs in the same direction. On the even
-// moves the smallest disk can't move, so only one other move is possible.
-// For even N the smallest disk goes round the other way, so auxiliary and
-// destination are swapped.
+// Each peg is a stack. The moves keep cycling through 3 peg pairs:
+//   A-C, A-B, B-C  (for even N swap B and C)
+// and between two pegs only one move is legal, so we just make it.
 //
-// Complexity:
-// - To move N disks we move N-1 disks out of the way, move the biggest
-//   one, then move the N-1 disks back on top of it:
-//     T(N) = 2T(N-1) + 1,  T(1) = 1
-//     T(N) = 2^N - 1   (1, 3, 7, 15, 31, ...)
-// - Time: 2^N - 1 moves, each O(1) -> O(2^N). Every extra disk doubles it.
-//   It's the same for best and worst case, the number of moves is fixed.
-// - Space: the stacks only hold N disks and there's no recursion -> O(N)
+// T(N) = 2T(N-1) + 1 = 2^N - 1 moves, each O(1)
+// Time: O(2^N), same for every input. Space: O(N)
 #include <iostream>
 using namespace std;
 
 const int MAX = 30;
 
-// simple array stack, one for each peg
+// one stack per peg
 class Stack {
 private:
     int arr[MAX];
     int top;
+    char name;    // A, B or C
 
 public:
-    char name;    // A, B or C, just for printing
-
     Stack() {
         top = -1;
         name = ' ';
+    }
+
+    void setName(char c) {
+        name = c;
+    }
+
+    char getName() {
+        return name;
     }
 
     bool isEmpty() {
@@ -50,7 +44,6 @@ public:
         arr[++top] = x;
     }
 
-    // callers check isEmpty() first, the message is only there for safety
     int pop() {
         if (isEmpty()) {
             cout << "Stack underflow" << endl;
@@ -67,7 +60,7 @@ public:
         return arr[top];
     }
 
-    // prints the disks from bottom to top
+    // bottom to top
     void display() {
         cout << name << ": ";
         for (int i = 0; i <= top; i++)
@@ -81,19 +74,19 @@ private:
     Stack source, auxiliary, destination;
     int n;
     int moveCount;
-    bool showPegs;    // print the pegs after every move (small N only)
+    bool showPegs;    // only for small N
 
-    // moves a disk between a and b, whichever way is legal
+    // legal move between a and b
     void moveBetween(Stack &a, Stack &b) {
         if (a.isEmpty() || (!b.isEmpty() && b.peek() < a.peek())) {
             int disk = b.pop();
             a.push(disk);
-            printMove(disk, b.name, a.name);
+            printMove(disk, b.getName(), a.getName());
         }
         else {
             int disk = a.pop();
             b.push(disk);
-            printMove(disk, a.name, b.name);
+            printMove(disk, a.getName(), b.getName());
         }
         if (showPegs)
             displayPegs();
@@ -117,11 +110,11 @@ public:
         n = disks;
         moveCount = 0;
         showPegs = (n <= 4);
-        source.name = 'A';
-        auxiliary.name = 'B';
-        destination.name = 'C';
+        source.setName('A');
+        auxiliary.setName('B');
+        destination.setName('C');
 
-        // all disks on A, biggest at the bottom
+        // biggest disk at the bottom
         for (int i = n; i >= 1; i--)
             source.push(i);
     }
@@ -149,9 +142,10 @@ public:
             else
                 moveBetween(*aux, *dest);
         }
+    }
 
-        cout << endl << "Total moves: " << moveCount
-             << " (2^" << n << " - 1 = " << totalMoves << ")" << endl;
+    int getMoveCount() {
+        return moveCount;
     }
 };
 
@@ -159,15 +153,18 @@ int main() {
     int n;
     cout << "Enter number of disks: ";
 
-    // 20 disks is already a million moves
+    // 20 disks = 1 million moves
     if (!(cin >> n) || n < 1 || n > 20) {
         cout << "Please enter between 1 and 20 disks." << endl;
         return 0;
     }
 
-    cout << endl << "Moving " << n << " disks from A to C:" << endl;
+    cout << endl << "Moving " << n << (n == 1 ? " disk" : " disks") << " from A to C:" << endl;
     TowerOfHanoi t(n);
     t.solve();
+
+    cout << endl << "Total moves: " << t.getMoveCount()
+         << " (2^" << n << " - 1 = " << (1 << n) - 1 << ")" << endl;
 
     return 0;
 }
